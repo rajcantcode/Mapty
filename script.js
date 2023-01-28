@@ -72,7 +72,13 @@ class App {
     #workouts = [];
 
     constructor() {
+        // Get user's position
         this._getPosition();
+
+        // Get data from local storage
+        this._getLocalStorage();
+
+        // Attach event handlers
         form.addEventListener('submit', this._setPopUp.bind(this));
         inputType.addEventListener('change', this._toggleElevationField);
         containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
@@ -92,8 +98,8 @@ class App {
     _loadMap(position) {
         const { latitude } = position.coords;
         const { longitude } = position.coords;
-        console.log(latitude, longitude);
-        console.log(`https://www.google.com/maps/@${latitude},${longitude}`);
+        // console.log(latitude, longitude);
+        // console.log(`https://www.google.com/maps/@${latitude},${longitude}`);
 
         const coords = [latitude, longitude];
         this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
@@ -104,6 +110,7 @@ class App {
         }).addTo(this.#map);
 
         this.#map.on('click', this._helper.bind(this));
+        this.#workouts.forEach(workout => this._setPopUpLS(workout));
     }
 
     _helper(mapE) {
@@ -112,7 +119,7 @@ class App {
         const { lat, lng } = mapE.latlng;
         // console.log(this);
         this.#mapEvent = [lat, lng];
-        console.log(this.#mapEvent);
+        // console.log(this.#mapEvent);
     }
 
     _hideForm() {
@@ -121,6 +128,22 @@ class App {
         form.style.display = 'none';
         form.classList.add('hidden');
         setTimeout(() => (form.style.display = 'grid'));
+    }
+
+    _setPopUpLS(obj) {
+        L.marker(obj.coords)
+            .addTo(this.#map)
+            .bindPopup(
+                L.popup({
+                    maxWidth: 250,
+                    minWidth: 100,
+                    autoClose: false,
+                    className: `${obj.type}-popup`,
+                    closeOnClick: false,
+                })
+            )
+            .setPopupContent(obj.description)
+            .openPopup();
     }
 
     _setPopUp(e) {
@@ -168,7 +191,7 @@ class App {
             workout = new Running(this.#mapEvent, distance, duration, cadence);
             // Pushing object to workout array
             this.#workouts.push(workout);
-            console.log(this.#workouts);
+            // console.log(this.#workouts);
         }
 
         // If cycling, then create cycling object
@@ -186,11 +209,14 @@ class App {
             workout = new Cycling(this.#mapEvent, distance, duration, elev);
             // Pushing object to workout array
             this.#workouts.push(workout);
-            console.log(this.#workouts);
+            // console.log(this.#workouts);
         }
 
         // Clearing input fields and hide form
         this._hideForm();
+
+        // Pushing objects in local storage
+        this._setLocalStorage();
 
         return workout;
     }
@@ -261,7 +287,20 @@ class App {
                 duration: 1,
             },
         });
-        workout.click();
+        // workout.click();
+    }
+
+    _setLocalStorage() {
+        localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+    }
+
+    _getLocalStorage() {
+        const data = JSON.parse(localStorage.getItem('workouts'));
+        if (!data) return;
+
+        this.#workouts = data;
+        this.#workouts.forEach(workout => this._renderWorkout(workout));
+
     }
 
     _newWorkout() { }
