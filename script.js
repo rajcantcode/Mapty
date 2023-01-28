@@ -12,9 +12,9 @@ const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
 
 class Workout {
+    clicks = 0;
     date = new Date();
     id = (Date.now() + '').slice(-10);
-    dispStr;
     constructor(coords, distance, duration) {
         this.coords = coords; // [lat, lng]
         this.distance = distance; // in km
@@ -29,6 +29,10 @@ class Workout {
         this.description = `${emoji} ${activity[0].toUpperCase()}${activity.slice(
             1
         )} on ${months[this.date.getMonth()]} ${this.date.getDate()}`;
+    }
+
+    click() {
+        this.clicks++;
     }
 }
 
@@ -63,6 +67,7 @@ class Cycling extends Workout {
 
 class App {
     #map;
+    #mapZoomLevel = 14;
     #mapEvent;
     #workouts = [];
 
@@ -70,6 +75,7 @@ class App {
         this._getPosition();
         form.addEventListener('submit', this._setPopUp.bind(this));
         inputType.addEventListener('change', this._toggleElevationField);
+        containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
     }
 
     _getPosition() {
@@ -90,7 +96,7 @@ class App {
         console.log(`https://www.google.com/maps/@${latitude},${longitude}`);
 
         const coords = [latitude, longitude];
-        this.#map = L.map('map').setView(coords, 15);
+        this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
 
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             attribution:
@@ -114,8 +120,7 @@ class App {
         inputDistance.value = inputDuration.value = inputCadence.value = inputElevation.value = '';
         form.style.display = 'none';
         form.classList.add('hidden');
-        setTimeout(() => form.style.display = 'grid');
-
+        setTimeout(() => (form.style.display = 'grid'));
     }
 
     _setPopUp(e) {
@@ -210,7 +215,7 @@ class App {
             html += `<div class="workout__details">
             <span class="workout__icon">⚡️</span>
             <span class="workout__value">${workout.pace.toFixed(1)}</span>
-            <span class="workout__unit">min/km</span>
+            <span class="workout__unit">km/min</span>
           </div>
           <div class="workout__details">
             <span class="workout__icon">🦶🏼</span>
@@ -240,6 +245,23 @@ class App {
     _toggleElevationField() {
         inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
         inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
+    }
+
+    _moveToPopup(e) {
+        const workoutEl = e.target.closest('.workout');
+        // console.log(workoutEl);
+        if (!workoutEl) return;
+        const workout = this.#workouts.find(
+            work => work.id === workoutEl.dataset.id
+        );
+        // console.log(workout);
+        this.#map.setView(workout.coords, this.#mapZoomLevel, {
+            animate: true,
+            pan: {
+                duration: 1,
+            },
+        });
+        workout.click();
     }
 
     _newWorkout() { }
