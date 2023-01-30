@@ -70,6 +70,7 @@ class App {
     #mapZoomLevel = 14;
     #mapEvent;
     #workouts = [];
+    #markers = [];
 
     constructor() {
         // Get user's position
@@ -82,6 +83,7 @@ class App {
         form.addEventListener('submit', this._setPopUp.bind(this));
         inputType.addEventListener('change', this._toggleElevationField);
         containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
+        containerWorkouts.addEventListener('click', this._deleteWorkout.bind(this));
     }
 
     _getPosition() {
@@ -131,7 +133,7 @@ class App {
     }
 
     _setPopUpLS(obj) {
-        L.marker(obj.coords)
+        const marker = L.marker(obj.coords)
             .addTo(this.#map)
             .bindPopup(
                 L.popup({
@@ -144,12 +146,13 @@ class App {
             )
             .setPopupContent(obj.description)
             .openPopup();
+        this.#markers.push({ id: obj.id, marker });
     }
 
     _setPopUp(e) {
         e.preventDefault();
         const obj = this._submitform();
-        L.marker(obj.coords)
+        const marker = L.marker(obj.coords)
             .addTo(this.#map)
             .bindPopup(
                 L.popup({
@@ -162,6 +165,7 @@ class App {
             )
             .setPopupContent(obj.description)
             .openPopup();
+        this.#markers.push({ id: obj.id, marker });
         this._renderWorkout(obj);
     }
 
@@ -224,6 +228,10 @@ class App {
     _renderWorkout(workout) {
         let html = `<li class="workout workout--${workout.type}" data-id="${workout.id
             }">
+            <div class="controls absolute">
+            <h4>edit</h4>
+            <h4 class="cross">x</h4>
+          </div>
         <h2 class="workout__title">${workout.description}</h2>
         <div class="workout__details">
           <span class="workout__icon">${workout.type === 'running' ? '🏃🏻‍♂️' : '🚴🏼‍♂️'
@@ -241,7 +249,7 @@ class App {
             html += `<div class="workout__details">
             <span class="workout__icon">⚡️</span>
             <span class="workout__value">${workout.pace.toFixed(1)}</span>
-            <span class="workout__unit">km/min</span>
+            <span class="workout__unit">km/hr</span>
           </div>
           <div class="workout__details">
             <span class="workout__icon">🦶🏼</span>
@@ -275,12 +283,12 @@ class App {
 
     _moveToPopup(e) {
         const workoutEl = e.target.closest('.workout');
-        // console.log(workoutEl);
         if (!workoutEl) return;
+        // console.log(this.#workouts);
         const workout = this.#workouts.find(
             work => work.id === workoutEl.dataset.id
         );
-        // console.log(workout);
+
         this.#map.setView(workout.coords, this.#mapZoomLevel, {
             animate: true,
             pan: {
@@ -290,17 +298,36 @@ class App {
         // workout.click();
     }
 
+    _deleteWorkout(e) {
+        if (!e.target.classList.contains('cross')) return;
+
+        // Get id and set display to none of that workout
+        const workoutEl = e.target.closest('.workout');
+        workoutEl.style.display = 'none';
+
+        // With that id, filter the array 
+        const temp = this.#workouts.filter(work => work.id !== workoutEl.dataset.id);
+        this.#workouts = temp;
+        // console.log(this.#workouts);
+        this._setLocalStorage();
+
+        // Remove marker of that workout
+        const markerObj = this.#markers.find(mark => mark.id === workoutEl.dataset.id)
+        markerObj.marker.remove();
+
+    }
+
     _setLocalStorage() {
         localStorage.setItem('workouts', JSON.stringify(this.#workouts));
     }
 
     _getLocalStorage() {
         const data = JSON.parse(localStorage.getItem('workouts'));
+        console.log(data);
         if (!data) return;
 
         this.#workouts = data;
         this.#workouts.forEach(workout => this._renderWorkout(workout));
-
     }
 
     reset() {

@@ -72,11 +72,37 @@ a:visited {
   padding: 1.5rem 2.25rem;
   margin-bottom: 1.75rem;
   cursor: pointer;
-
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 0.75rem 1.5rem;
 }
+
+.workout .absolute {
+  position: absolute;
+  font-size: 1.5rem;
+  top: 2px;
+  right: 10px;
+  min-width: 13%;
+  /* margin-right: 20px; */
+}
+
+.workout .controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workout .controls h4 {
+  color: grey;
+  transition: color 500ms;
+}
+
+.workout .controls h4:hover {
+  color: white;
+  text-decoration: underline;
+}
+
 .workout--running {
   border-left: 5px solid var(--color-brand--2);
 }
