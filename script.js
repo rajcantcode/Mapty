@@ -68,6 +68,7 @@ class Cycling extends Workout {
 class App {
     #map;
     #mapZoomLevel = 14;
+    #toEdit = false;
     #mapEvent;
     #workouts = [];
     #markers = [];
@@ -84,6 +85,7 @@ class App {
         inputType.addEventListener('change', this._toggleElevationField);
         containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
         containerWorkouts.addEventListener('click', this._deleteWorkout.bind(this));
+        containerWorkouts.addEventListener('click', this._editWorkout.bind(this));
     }
 
     _getPosition() {
@@ -117,6 +119,11 @@ class App {
 
     _helper(mapE) {
         form.classList.remove('hidden');
+        inputDistance.value =
+            inputDuration.value =
+            inputCadence.value =
+            inputElevation.value =
+            '';
         inputDistance.focus();
         const { lat, lng } = mapE.latlng;
         // console.log(this);
@@ -151,6 +158,8 @@ class App {
 
     _setPopUp(e) {
         e.preventDefault();
+        if (this.#toEdit) return;
+
         const obj = this._submitform();
         const marker = L.marker(obj.coords)
             .addTo(this.#map)
@@ -165,6 +174,7 @@ class App {
             )
             .setPopupContent(obj.description)
             .openPopup();
+        console.log(marker._popup._content);
         this.#markers.push({ id: obj.id, marker });
         this._renderWorkout(obj);
     }
@@ -225,11 +235,11 @@ class App {
         return workout;
     }
 
-    _renderWorkout(workout) {
+    _renderWorkout(workout, append = true) {
         let html = `<li class="workout workout--${workout.type}" data-id="${workout.id
             }">
             <div class="controls absolute">
-            <h4>edit</h4>
+            <h4 class="edit">edit</h4>
             <h4 class="cross">x</h4>
           </div>
         <h2 class="workout__title">${workout.description}</h2>
@@ -273,7 +283,8 @@ class App {
         </li>`;
         }
 
-        form.insertAdjacentHTML('afterend', html);
+        if (append) form.insertAdjacentHTML('afterend', html);
+        return html.substring(68, 1086);
     }
 
     _toggleElevationField() {
@@ -305,16 +316,72 @@ class App {
         const workoutEl = e.target.closest('.workout');
         workoutEl.style.display = 'none';
 
-        // With that id, filter the array 
-        const temp = this.#workouts.filter(work => work.id !== workoutEl.dataset.id);
+        // With that id, filter the array
+        const temp = this.#workouts.filter(
+            work => work.id !== workoutEl.dataset.id
+        );
         this.#workouts = temp;
         // console.log(this.#workouts);
         this._setLocalStorage();
 
         // Remove marker of that workout
-        const markerObj = this.#markers.find(mark => mark.id === workoutEl.dataset.id)
+        const markerObj = this.#markers.find(
+            mark => mark.id === workoutEl.dataset.id
+        );
         markerObj.marker.remove();
+    }
 
+    _editWorkout(e) {
+        if (!e.target.classList.contains('edit')) return;
+
+        this.#toEdit = true;
+
+        // Get the target element
+        const workoutEl = e.target.closest('.workout');
+
+        // Display form, the form should contain all the values of the element which was selected by the user to edit
+        const workout = this.#workouts.find(
+            work => work.id === workoutEl.dataset.id
+        );
+        form.classList.remove('hidden');
+        inputType.value = workout.type;
+        inputDistance.value = workout.distance;
+        inputDuration.value = workout.duration;
+        if (workout.type === 'running') {
+            inputCadence.closest('.form__row').classList.remove('form__row--hidden');
+            inputElevation.closest('.form__row').classList.add('form__row--hidden');
+            inputCadence.value = workout.cadence;
+        } else {
+            inputElevation
+                .closest('.form__row')
+                .classList.remove('form__row--hidden');
+            inputCadence.closest('.form__row').classList.add('form__row--hidden');
+            inputElevation.value = workout.elev;
+        }
+
+        // Once the user submits form, with new changes display them on the element, and on marker
+        let t = this;
+        form.addEventListener('submit', function () {
+            if (!t.#toEdit) return;
+            // Setting toEdit to false again
+            t.#toEdit = false;
+
+            // Getting index of workout that was selected from workouts array
+            const index = t.#workouts.findIndex(
+                workout => workout.id === workoutEl.dataset.id
+            );
+            // Creating new object with editted values
+            const editedWorkout = t._submitform();
+            // Assigning coords of the selected object to new object
+            editedWorkout.coords = t.#workouts[index].coords;
+            // Adding the new updated object in place of old object
+            t.#workouts[index] = t.#workouts.pop();
+            // Generating html for the new workout
+            const html = t._renderWorkout(editedWorkout, false);
+            workoutEl.innerHTML = '';
+            workoutEl.innerHTML = html;
+            t._setLocalStorage();
+        });
     }
 
     _setLocalStorage() {
@@ -334,7 +401,6 @@ class App {
         localStorage.removeItem('workouts');
         location.reload();
     }
-
     _newWorkout() { }
 }
 
