@@ -393,8 +393,22 @@ class App {
         console.log(data);
         if (!data) return;
 
-        this.#workouts = data;
+        const temp = [];
+        data.forEach(workout => temp.push(this._restoreObj(workout)));
+        console.log(temp);
+        this.#workouts = temp;
         this.#workouts.forEach(workout => this._renderWorkout(workout));
+    }
+
+    _restoreObj(obj) {
+        if (obj.type === 'running') {
+            const workout = new Running(obj.coords, obj.distance, obj.duration, obj.cadence);
+            return workout;
+        }
+        else {
+            const workout = new Cycling(obj.coords, obj.distance, obj.duration, obj.elev);
+            return workout;
+        }
     }
 
     reset() {
